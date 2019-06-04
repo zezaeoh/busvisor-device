@@ -15,17 +15,12 @@ SoftwareSerial mySerial(RX,TX); //RX, TX
 #define OUT_2 6
 #define OUT_3 7
 #define OUT_LAST 8
-#define TEST 300
-//for button
-#define BUTTON_1 101
-#define BUTTON_2 102
-#define BUTTON_3 103
-#define BUTTON_4 104
-#define BUTTON_5 105
-#define BUTTON_INF 10000
-const static int analogInPin = A7;
-static int buttonValue = 0;
 
+#define COUNT_TEST 255
+#define COUNT_UP 1
+#define COUNT_DOWN 2
+#define COUNT_INIT 10
+ 
 const static int THREHOLD = 50;
 const int sensorPin0 = A1;
 int sensorValue0 = 0;
@@ -37,8 +32,7 @@ int sensorValue2 = 0;
 const int LED0 = 2;
 const int LED1 = 3;
 const int LED2 = 4;
-static bool testFlag = true;
-static int buttonFlag = BUTTON_INF;
+static int input = -1;
 
 static unsigned char stat = 0b000;
 static int cnt = 0;
@@ -58,60 +52,14 @@ void setup() {
 
 void loop() {
   updateStatus();
-
-  if(buttonCheck() == BUTTON_2){
-    buttonFlag = BUTTON_2;
-  }else if(buttonCheck() == BUTTON_3){
-    buttonFlag = BUTTON_3;
-  }else if(buttonCheck() == BUTTON_1){
-    buttonFlag = BUTTON_1;
-  }else if(buttonCheck() == BUTTON_4){
-    buttonFlag = BUTTON_4;
-  }else if (buttonCheck() == BUTTON_INF){
-    if (buttonFlag != BUTTON_INF){
-      if(buttonFlag == BUTTON_2){
-        cnt++;
-        buttonFlag = BUTTON_INF;
-      }else if(buttonFlag == BUTTON_3){
-        if(cnt > 0){
-          cnt--;
-          buttonFlag = BUTTON_INF;
-        }
-      }else if(buttonFlag == BUTTON_1){
-        cnt = 0;
-        buttonFlag = BUTTON_INF;
-      }else if(buttonFlag == BUTTON_4){
-        if(testFlag){
-          testFlag = false;
-          flag = TEST;
-          Serial.println("TEST: ");
-          Serial.println(flag);
-        }else{
-          testFlag = true;
-          flag = INIT;
-          lightOff();
-          Serial.println("INIT");
-        }
-        buttonFlag = BUTTON_INF;
-      }
-      mySerial.write(cnt);
-//      Serial.println(buttonFlag);
-    }
-  }
   
-  if(stat == 0b000){
-    if(flag != TEST){
-      if(flag == IN_LAST){
-        cnt++;
-        mySerial.write(cnt);
-      }else if(flag == OUT_LAST){
-        if(cnt > 0){
-          cnt--;
-          mySerial.write(cnt);
-        }
-      }
-      flag = INIT;
+  if(stat == 0b000 && flag != COUNT_TEST){
+    if(flag == IN_LAST){
+      countContol(COUNT_UP);
+    }else if(flag == OUT_LAST){
+      countContol(COUNT_DOWN);
     }
+    flag = INIT;
   }
   
   switch(flag){
@@ -172,12 +120,32 @@ void loop() {
     }
     break;
 
-    case TEST:
+    case COUNT_TEST:
     light();
     break;
     
     default:
     break;
+  }
+
+  if (mySerial.available() > 0){
+    input = mySerial.read();
+    
+    switch(input){
+      case COUNT_UP: case COUNT_DOWN: case COUNT_INIT:
+      countContol(input);
+      break;
+
+      case COUNT_TEST:
+      if(flag == COUNT_TEST)
+        flag = INIT;
+      else
+        flag = COUNT_TEST;
+      break;
+      
+      default:
+      break;
+    } 
   }
 //  Serial.print("status: ");
 //  Serial.println(stat);
@@ -261,18 +229,22 @@ void lightOff(){
   digitalWrite(LED2, LOW);
 }
 
-int buttonCheck(){
-  buttonValue = analogRead(analogInPin);
-  if(buttonValue<100)
-    return BUTTON_1;
-  else if(buttonValue>100 && buttonValue < 200)
-    return BUTTON_2;
-  else if(buttonValue>300 && buttonValue < 400)
-    return BUTTON_3;
-  else if(buttonValue>450 && buttonValue < 550)
-    return BUTTON_4;
-  else if(buttonValue>700 && buttonValue < 800)
-    return BUTTON_5;
-  else
-    return BUTTON_INF;
+void countContol(int cc){
+  switch(cc){
+    case COUNT_UP:
+    cnt++;
+    break;
+
+    case COUNT_DOWN:
+    if(cnt > 0) cnt--;
+    break;
+
+    case COUNT_INIT:
+    cnt = 0;
+    break;
+
+    default:
+    break;
+  }
+  mySerial.write(cnt);
 }

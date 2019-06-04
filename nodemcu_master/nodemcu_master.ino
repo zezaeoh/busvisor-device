@@ -22,6 +22,18 @@
 #define ON 1
 #define OFF 0
 
+//for button
+#define BUTTON_1 101
+#define BUTTON_2 102
+#define BUTTON_3 103
+#define BUTTON_4 104
+#define BUTTON_5 105
+#define BUTTON_INF 10000
+#define COUNT_TEST 255
+#define COUNT_UP 1
+#define COUNT_DOWN 2
+#define COUNT_INIT 10
+
 //for state control
 #define ERROR_CONTROL -1
 #define START_DRIVING 0
@@ -98,6 +110,13 @@ static int status_code_stack;
 static unsigned char tmp;
 static long button_inf = 10000;
 
+// for button input
+const static int analogInPin = A0;
+static int buttonValue = 0;
+static int buttonFlag = BUTTON_INF;
+static int buttonValues[3] = {BUTTON_INF};
+static int buttonValueIndex = 0;
+
 static unsigned long previousMillis = 0;
 static unsigned long currentMillis = 0;
 
@@ -156,12 +175,33 @@ void controlSpeaker(int speakerStatus) {
     digitalWrite(SPEAKER_OUT, LOW);
 }
 
-//bool isButtonPressed(){
-//  if(digitalRead(BUTTON_CHECK))
-//    return true;
-//  else
-//    return false;
-//}
+int getfilteredButtonInput() {
+  buttonValue = analogRead(analogInPin);
+  
+  if(buttonValue<100)
+    return BUTTON_1;
+  else if(buttonValue>100 && buttonValue < 200)
+    return BUTTON_2;
+  else if(buttonValue>300 && buttonValue < 400)
+    return BUTTON_3;
+  else if(buttonValue>450 && buttonValue < 550)
+    return BUTTON_4;
+  else if(buttonValue>700 && buttonValue < 800)
+    return BUTTON_5;
+  else
+    return BUTTON_INF;
+}
+
+void updateButtonFlag() {
+  buttonValueIndex = (buttonValueIndex + 1) % 3;
+  buttonValues[buttonValueIndex] = getfilteredButtonInput();
+  
+  if(buttonValues[0] == buttonValues[1] && buttonValues[1] == buttonValues[2]){
+    buttonFlag = buttonValues[0];
+  } else {
+    buttonFlag = BUTTON_INF;
+  }
+}
 
 void setup () {
   Serial.begin(115200);
@@ -194,6 +234,8 @@ void setup () {
 }
 
 void loop() {
+  updateButtonFlag();
+  
   switch (status_code) {
     case ERROR_CONTROL: // error (maybe network)
       displayToLcd(NETWORK_ERROR_DISP_1, NETWORK_ERROR_DISP_1_LEN, NETWORK_ERROR_DISP_2, NETWORK_ERROR_DISP_2_LEN);
@@ -209,7 +251,6 @@ void loop() {
       if (requestGET(PARAM_CHAR_BUFFER)){
         status_code = 1;
         updateChildCount(0);
-        countSerial.write(1);
       } else {
         status_code_stack = status_code;
         status_code = ERROR_CONTROL;
@@ -233,6 +274,26 @@ void loop() {
               status_code = ERROR_CONTROL;
             }
           }
+        }
+        switch (buttonFlag){
+          case BUTTON_2: // count up
+            countSerial.write(COUNT_UP);
+            break;
+          
+          case BUTTON_3: // count down
+            countSerial.write(COUNT_DOWN);
+            break;
+
+          case BUTTON_5: // count init
+            countSerial.write(COUNT_INIT);
+            break;
+
+          case BUTTON_1: // count test
+            countSerial.write(COUNT_TEST);
+            break;
+            
+          default:
+            break;
         }
       }
       break;
@@ -274,8 +335,7 @@ void loop() {
         status_code = SEND_EMERGENCY_2_STATUS_TO_SERVER;
       } else {
         // wait button input
-        if (0) { // button pressed
-          // stop the speaker
+        if (buttonFlag == BUTTON_5) {
           controlSpeaker(OFF);
           status_code = END_EMERGENCY;
         }
@@ -315,8 +375,7 @@ void loop() {
 
     case WAIT_BUTTON_UNTILE_BATTERY_DIE: // wait for button until battery burn out
       // wait button input
-      if (0) { // button Pressed
-        // stop the speaker
+      if (buttonFlag == BUTTON_5) {
         controlSpeaker(OFF);
         status_code = INF;
       }
