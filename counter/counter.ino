@@ -16,7 +16,7 @@ SoftwareSerial mySerial(RX,TX); //RX, TX
 #define OUT_3 7
 #define OUT_LAST 8
 
-#define COUNT_TEST 255
+#define COUNT_TEST 200
 #define COUNT_UP 1
 #define COUNT_DOWN 2
 #define COUNT_INIT 10
@@ -137,8 +137,10 @@ void loop() {
       break;
 
       case COUNT_TEST:
-      if(flag == COUNT_TEST)
+      if(flag == COUNT_TEST){
         flag = INIT;
+        lightOff();
+      }
       else
         flag = COUNT_TEST;
       break;

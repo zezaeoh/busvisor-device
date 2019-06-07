@@ -29,7 +29,7 @@
 #define BUTTON_4 104
 #define BUTTON_5 105
 #define BUTTON_INF 10000
-#define COUNT_TEST 255
+#define COUNT_TEST 200
 #define COUNT_UP 1
 #define COUNT_DOWN 2
 #define COUNT_INIT 10
@@ -52,8 +52,8 @@
 
 const static char* DEVICE_ID = "sc13150";
 
-const static char* SSIDNAME = "sn";
-const static char* PASSWORD = "pw";
+const static char* SSIDNAME = "GCAMP";
+const static char* PASSWORD = "12345678a";
 const static int WIFI_NUM = 2;
 
 // for display
@@ -114,7 +114,7 @@ static long button_inf = 10000;
 const static int analogInPin = A0;
 static int buttonValue = 0;
 static int buttonFlag = BUTTON_INF;
-static int buttonValues[3] = {BUTTON_INF};
+static int buttonValues[4] = {BUTTON_INF};
 static int buttonValueIndex = 0;
 
 static unsigned long previousMillis = 0;
@@ -150,9 +150,10 @@ void displayToLcd(const char cs1[], int len1, const char cs2[], int len2) {
 }
 
 void updateChildCount(int cnt) {
-  lcd.setCursor(0, 1);
-  for (int i = 0; i < 16; i++)
-    lcd.print(' ');
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  for (int i = 0; i < CURRENT_CHILD_LEN; i++)
+    lcd.print(CURRENT_CHILD[i]);
 
   sprintf(DISP_CHAR_BUFFER, "NUM: %d", cnt);
   lcd.setCursor(0, 1);
@@ -193,11 +194,17 @@ int getfilteredButtonInput() {
 }
 
 void updateButtonFlag() {
-  buttonValueIndex = (buttonValueIndex + 1) % 3;
+  buttonValueIndex = (buttonValueIndex + 1) % 4;
   buttonValues[buttonValueIndex] = getfilteredButtonInput();
   
-  if(buttonValues[0] == buttonValues[1] && buttonValues[1] == buttonValues[2]){
+  if(buttonValues[0] == buttonValues[1] 
+  && buttonValues[1] == buttonValues[2]
+  && buttonValues[2] == buttonValues[3]){
     buttonFlag = buttonValues[0];
+    buttonValues[0] = BUTTON_INF;
+    buttonValues[1] = BUTTON_INF;
+    buttonValues[2] = BUTTON_INF;
+    buttonValues[3] = BUTTON_INF;
   } else {
     buttonFlag = BUTTON_INF;
   }
